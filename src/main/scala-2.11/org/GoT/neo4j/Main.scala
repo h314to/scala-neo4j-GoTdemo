@@ -11,16 +11,7 @@ object Main extends App {
   val driver = GraphDatabase.driver("bolt://localhost/7687", AuthTokens.basic("neo4j", "admin"))
   val session = driver.session
 
-  // Drop everything!!!
-  val dropCypher = List(
-    s"DROP CONSTRAINT ON ( book:Book ) ASSERT book.title IS UNIQUE",
-    s"DROP CONSTRAINT ON ( character:Character ) ASSERT character.name IS UNIQUE",
-    s"DROP CONSTRAINT ON ( house:House ) ASSERT house.name IS UNIQUE",
-    s"MATCH (n) DETACH DELETE n"
-  ).foreach(session.run)
-
-
-  // Constraints for names
+  // Constraints for names (also creates indexes)
   val constraintsCypher = List(
     "CREATE CONSTRAINT ON (c:Character) ASSERT c.name IS UNIQUE",
     "CREATE CONSTRAINT ON (h:House) ASSERT h.name IS UNIQUE",
@@ -74,16 +65,11 @@ object Main extends App {
   val housesCypher = houses.map(name => s"MERGE (:House { name: '${name}' })").foreach(session.run)
   println("created houses")
 
-  // create indexes to speed up things
-  val indexesCypher = List(
-    "CREATE INDEX ON :Character (name)",
-    "CREATE INDEX ON :House(name)"
-  ).foreach(session.run)
-
   // set allegiences
   val allegienceCypher = characters.filter(_.house.isDefined).map { c =>
-    s"""MATCH (char:Character {name: '${c.name}' }),(house:House {name: '${c.house.get}' })
-        MERGE (char) -[:BELONGS_TO]-> (house)""".stripMargin
+    s"""MATCH (char:Character {name: '${c.name}' })
+        MERGE (house:House {name: '${c.house.get}' })
+        CREATE UNIQUE (char) -[:BELONGS_TO]-> (house)""".stripMargin
   }.foreach(session.run)
   println("created alli")
 
@@ -92,8 +78,9 @@ object Main extends App {
     i <- 1 to 5
     if c.inBook(i)
   } yield
-    s"""MATCH (char:Character {name: '${c.name}' }), (book:Book {title: '${bookTitle(i)}' })
-    MERGE (char) -[:IS_IN]-> (book)""".stripMargin).foreach(session.run)
+    s"""MATCH (char:Character {name: '${c.name}' })
+        MERGE (book:Book {title: '${bookTitle(i)}' })
+        CREATE UNIQUE (char) -[:IS_IN]-> (book)""".stripMargin).foreach(session.run)
   println("created inbooks")
 
   // bye bye
