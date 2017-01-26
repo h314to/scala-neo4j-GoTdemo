@@ -41,10 +41,10 @@ object Main extends App {
     val deathChapter = if (col(4).isEmpty) None else Some(col(4).toInt)
     val introChapter = if (col(5).isEmpty) None else Some(col(5).toInt)
     val gender = if (col(6) == "1") "Male" else "Female"
-    val isNoble = if (col(7) == "1") true else false
+    val isNoble = col(7) == "1"
 
     val inBook = col.slice(8, 13)
-      .map(b => if (b == "1") true else false)
+      .map(b =>  b == "1")
       .zipWithIndex
       .map { case (b, i) => (i + 1, b) }.toMap
 
@@ -58,12 +58,10 @@ object Main extends App {
   val charsCypher = characters.map { c =>
     s"MERGE(:Character { name: '${c.name}', gender: '${c.gender}', is_noble: ${c.isNoble} })"
   }.foreach(session.run)
-  println("created chars")
 
   // create houses
   val houses = characters.filter(_.house.isDefined).map(_.house.get).distinct
   val housesCypher = houses.map(name => s"MERGE (:House { name: '${name}' })").foreach(session.run)
-  println("created houses")
 
   // set allegiences
   val allegienceCypher = characters.filter(_.house.isDefined).map { c =>
@@ -71,7 +69,6 @@ object Main extends App {
         MERGE (house:House {name: '${c.house.get}' })
         CREATE UNIQUE (char) -[:BELONGS_TO]-> (house)""".stripMargin
   }.foreach(session.run)
-  println("created alli")
 
   val inBooksCypher = (for {
     c <- characters
@@ -81,7 +78,6 @@ object Main extends App {
     s"""MATCH (char:Character {name: '${c.name}' })
         MERGE (book:Book {title: '${bookTitle(i)}' })
         CREATE UNIQUE (char) -[:IS_IN]-> (book)""".stripMargin).foreach(session.run)
-  println("created inbooks")
 
   // bye bye
   session.close
