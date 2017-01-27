@@ -28,10 +28,6 @@ object Main extends App {
   // create characters
   val charsResult = characters.map(_.cqlCharacter).foreach(session.run)
 
-  // create houses
-  //val houses = characters.filter(_.house.isDefined).map(_.house.get).distinct
-  //val housesCypher = houses.map(name => s"MERGE (:House { name: '${name}' })").foreach(session.run)
-
   // set allegiences
   val allegienceResult = characters.filter(_.house.isDefined).map(_.cqlAllegience).foreach(session.run)
 
