@@ -35,6 +35,6 @@ object Main extends App {
   val inBooksResult = characters.flatMap(_.cqlInBook).foreach(session.run)
 
   // bye bye
-  session.close
+  session.close()
 }
 
