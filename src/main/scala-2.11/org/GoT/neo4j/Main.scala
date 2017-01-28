@@ -11,8 +11,16 @@ object Main extends App {
   val driver = GraphDatabase.driver("bolt://localhost/7687", AuthTokens.basic("neo4j", "admin"))
   val session = driver.session
 
-  // Drop everything
-  val dropResult = Schema.dropAndDelete.foreach(session.run)
+  // Drop everything on start if running in debug mode
+  val debug = Option(System.getProperty("debug")) match {
+    case Some(x: String) => x.toBoolean
+    case None => false
+  }
+  if (debug) {
+    println("WARN: Running in debug mode.")
+    println("WARN: Dropping all constraints and deleting all nodes.")
+   val dropResult = Schema.dropAndDelete.foreach(session.run)
+  }
 
   // Constraints for names (also creates indexes)
   val constraintsResult = Schema.constraint.foreach(session.run)
