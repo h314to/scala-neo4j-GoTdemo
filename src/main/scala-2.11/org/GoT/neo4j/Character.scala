@@ -17,19 +17,36 @@ case class Character(name: String,
                      isNoble: Boolean,
                      inBook: Map[Int, Boolean]) {
 
-  val cqlCharacter = s"MERGE(:Character { name: '${this.name}', gender: '${this.gender}', is_noble: ${this.isNoble} })"
+  val cqlCharacter = s"""MERGE(:Character { id:   '${this.name}' + '_' + '${this.house.getOrElse("None")}',
+                                            name: '${this.name}',
+                                            gender: '${this.gender}',
+                                            book: ${this.bookIntro},
+                                            chapter: ${this.introChapter.getOrElse(-1)},
+                                            is_noble: ${this.isNoble} })""".stripMargin
 
   val cqlAllegience: String =
     if (this.house.isDefined)
-      s"""MATCH (char:Character {name: '${this.name}' })
+      s"""MERGE (char:Character {name: '${this.name}' })
           MERGE (house:House {name: '${this.house.get}' })
           CREATE UNIQUE (char) -[:BELONGS_TO]-> (house)""".stripMargin
     else
       ""
 
+  val cqlState: String =
+    if (this.deathChapter.isDefined || this.bookDeath.isDefined || this.deathChapter.isDefined)
+      s"""MERGE (char:Character {name: '${this.name}' })
+          MERGE (st:State {name: 'Dead'})
+          CREATE UNIQUE (char) -[:IS {year: ${this.deathYear.getOrElse(-1)},
+                                      book: ${this.bookDeath.getOrElse(-1)},
+                                      chapter: ${this.deathChapter.getOrElse(-1)} } ]-> (st)""".stripMargin
+    else
+      s"""MERGE (char:Character {name: '${this.name}' })
+          MERGE (st:State {name: 'Alive'})
+          CREATE UNIQUE (char) -[:IS { chapter: ${this.introChapter.getOrElse(-1)} } ]-> (st)""".stripMargin
+
 
   val cqlInBook: IndexedSeq[String] = for {i <- 1 to 5 if this.inBook(i)} yield
-    s"""MATCH (char:Character {name: '${this.name}' })
+    s"""MERGE (char:Character {name: '${this.name}' })
         MERGE (book:Book {title: '${Book.title(i)}' })
         CREATE UNIQUE (char) -[:IS_IN]-> (book)""".stripMargin
 
