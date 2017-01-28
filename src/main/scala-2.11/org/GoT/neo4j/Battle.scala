@@ -23,9 +23,8 @@ case class Battle(name: String,
                   region: String) {
 
   val cqlAttakerKing: List[String] =
-    if (this.attacker_king.isDefined)
-      attacker_king.get.map{king =>
-        s"""MERGE (c:Character {name: '${king}' })
+    if (this.attacker_king.isDefined) this.attacker_king.get.map { king =>
+      s"""MERGE (c:Character {name: '${king}' })
             MERGE (b:Battle {name: '${name}'})
             ON CREATE SET
               b.region = '${this.region}',
@@ -34,16 +33,15 @@ case class Battle(name: String,
               b.major_death = ${this.major_death},
               b.major_capture = ${this.major_capture},
               b.summer = ${this.summer.getOrElse(false)}
-        CREATE UNIQUE (c) -[:ATTACKED_IN {won: ${attacker_outcome},
-                                          size: ${attacker_size.getOrElse(-1)} }]-> (b)""".stripMargin
-      }
+        CREATE UNIQUE (c) -[:ATTACKER_KING_IN {won: ${attacker_outcome},
+                                               size: ${attacker_size.getOrElse(-1)} }]-> (b)""".stripMargin
+    }
     else
       List("")
 
   val cqlDefenderKing: List[String] =
-    if (this.defender_king.isDefined)
-      defender_king.get.map{king =>
-        s"""MERGE (c:Character {name: '${king}' })
+    if (this.defender_king.isDefined) this.defender_king.get.map { king =>
+      s"""MERGE (c:Character {name: '${king}' })
             MERGE (b:Battle {name: '${name}'})
             ON CREATE SET
               b.region = '${this.region}',
@@ -52,16 +50,15 @@ case class Battle(name: String,
               b.major_death = ${this.major_death},
               b.major_capture = ${this.major_capture},
               b.summer = ${this.summer.getOrElse(false)}
-        CREATE UNIQUE (c) -[:DEFENDED_IN {won: ${! attacker_outcome},
-                                          size: ${defender_size.getOrElse(-1)} }]-> (b)""".stripMargin
-      }
+            CREATE UNIQUE (c) -[:DEFENDER_KING_IN {won: ${!attacker_outcome},
+                                                   size: ${defender_size.getOrElse(-1)} }]-> (b)""".stripMargin
+    }
     else
       List("")
 
   val cqlAttackerCommanders: List[String] =
-    if (this.attacker_commander.isDefined)
-      attacker_commander.get.map{cmd =>
-        s"""MERGE (c:Character {name: '${cmd}' })
+    if (this.attacker_commander.isDefined) this.attacker_commander.get.map { cmd =>
+      s"""MERGE (c:Character {name: '${cmd}' })
             MERGE (b:Battle {name: '${name}'})
             ON CREATE SET
               b.region = '${this.region}',
@@ -70,34 +67,44 @@ case class Battle(name: String,
               b.major_death = ${this.major_death},
               b.major_capture = ${this.major_capture},
               b.summer = ${this.summer.getOrElse(false)}
-        CREATE UNIQUE (c) -[:COMMANDED_ATTACK_IN {won: ${attacker_outcome},
-                                                  size: ${attacker_size.getOrElse(-1)} }]-> (b)""".stripMargin
-      }
+              CREATE UNIQUE (c) -[:COMMANDED_ATTACK_IN {won: ${attacker_outcome},
+                                                        size: ${attacker_size.getOrElse(-1)} }]-> (b)""".stripMargin
+    }
+    else List("")
+
+  val cqlDefenderCommanders: List[String] =
+    if (this.defender_commander.isDefined) this.defender_commander.get.map { cmd =>
+      s"""MERGE (c:Character {name: '${cmd}' })
+          MERGE (b:Battle {name: '${name}'})
+          ON CREATE SET
+            b.region = '${this.region}',
+            b.year = '${this.year}',
+            b.type = '${this.battle_type}',
+            b.major_death = ${this.major_death},
+            b.major_capture = ${this.major_capture},
+            b.summer = ${this.summer.getOrElse(false)}
+          CREATE UNIQUE (c) -[:COMMANDED_DEFENCE_IN {won: ${!attacker_outcome},
+                                                     size: ${defender_size.getOrElse(-1)} }]-> (b)""".stripMargin
+    }
     else
       List("")
 
-  val cqlDefenderCommanders: List[String] =
-    if (this.defender_commander.isDefined)
-      defender_commander.get.map{cmd =>
-        s"""MERGE (c:Character {name: '${cmd}' })
-            MERGE (b:Battle {name: '${name}'})
-            ON CREATE SET
-              b.region = '${this.region}',
-              b.year = '${this.year}',
-              b.type = '${this.battle_type}',
-              b.major_death = ${this.major_death},
-              b.major_capture = ${this.major_capture},
-              b.summer = ${this.summer.getOrElse(false)}
-        CREATE UNIQUE (c) -[:COMMANDED_ATTACK_IN {won: ${! attacker_outcome},
-                                                  size: ${defender_size.getOrElse(-1)} }]-> (b)""".stripMargin
-      }
-    else
-      List("")
+  val cqlAttackerHouses: List[String] = this.attackers.get.map { h =>
+    s"""MERGE (h:House {name: '${h}' })
+        MERGE (b:Battle {name: '${name}'})
+        CREATE UNIQUE (h) -[:ATTACKER_IN {won: ${attacker_outcome} }]-> (b)""".stripMargin
+  }
+
+  val cqlDefenderHouses: List[String] = this.attackers.get.map { h =>
+    s"""MERGE (h:House {name: '${h}' })
+        MERGE (b:Battle {name: '${name}'})
+        CREATE UNIQUE (h) -[:DEFENDER_IN {won: ${!attacker_outcome} }]-> (b)""".stripMargin
+  }
 }
 
 object Battle {
 
-  def apply(csvString: String) : Battle = {
+  def apply(csvString: String): Battle = {
 
     val col = csvString.split(",").map(_.trim)
 
